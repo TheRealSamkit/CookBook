@@ -19,7 +19,9 @@ data class Recipe(
     val imageUrl: String = "",
     val createdBy: String = "", // User ID
     @ServerTimestamp
-    val createdAt: Timestamp? = null
+    val createdAt: Timestamp? = null,
+    val averageRating: Float = 0f,
+    val reviewCount: Int = 0
 ) {
     /**
      * Convert Recipe to a Map for Firestore storage.
@@ -36,7 +38,9 @@ data class Recipe(
             "steps" to steps,
             "imageUrl" to imageUrl,
             "createdBy" to createdBy,
-            "createdAt" to createdAt
+            "createdAt" to createdAt,
+            "averageRating" to averageRating,
+            "reviewCount" to reviewCount
         )
     }
 
@@ -56,7 +60,9 @@ data class Recipe(
                 steps = (map["steps"] as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
                 imageUrl = map["imageUrl"] as? String ?: "",
                 createdBy = map["createdBy"] as? String ?: "",
-                createdAt = map["createdAt"] as? Timestamp
+                createdAt = map["createdAt"] as? Timestamp,
+                averageRating = (map["averageRating"] as? Number)?.toFloat() ?: 0f,
+                reviewCount = (map["reviewCount"] as? Number)?.toInt() ?: 0
             )
         }
     }

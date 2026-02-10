@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.cookbook.data.repository.AuthRepository
 import com.example.cookbook.data.repository.UserRepository
+import com.example.cookbook.presentation.components.ErrorView
 import com.example.cookbook.presentation.components.RecipeCard
 import com.example.cookbook.presentation.recipe.RecipeViewModel
 import com.example.cookbook.util.Result
@@ -224,17 +225,14 @@ fun ProfileScreen(
 
                 is Result.Error -> {
                     item {
-                        Card(
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.errorContainer
-                            )
-                        ) {
-                            Text(
-                                text = "Failed to load your recipes",
-                                color = MaterialTheme.colorScheme.onErrorContainer,
-                                modifier = Modifier.padding(16.dp)
-                            )
-                        }
+                        ErrorView(
+                            message = (userRecipesState as Result.Error).exception.message
+                                ?: "Failed to load your recipes",
+                            onRetry = { viewModel.loadUserRecipes() },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(300.dp)
+                        )
                     }
                 }
             }

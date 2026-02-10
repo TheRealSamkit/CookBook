@@ -14,6 +14,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.cookbook.presentation.components.ErrorView
 import com.example.cookbook.presentation.components.RecipeCard
 import com.example.cookbook.presentation.recipe.RecipeViewModel
 import com.example.cookbook.util.Result
@@ -133,49 +134,14 @@ fun FavoritesScreen(
 
             is Result.Error -> {
                 // Error State
-                Box(
+                ErrorView(
+                    message = (favoritesState as Result.Error).exception.message
+                        ?: "Unable to load your favorite recipes",
+                    onRetry = { viewModel.loadFavoriteRecipes() },
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(paddingValues),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.padding(32.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.FavoriteBorder,
-                            contentDescription = "Error",
-                            modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colorScheme.error
-                        )
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        Text(
-                            text = "Failed to Load Favorites",
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.error
-                        )
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Text(
-                            text = (favoritesState as Result.Error).exception.message
-                                ?: "Unable to load your favorite recipes",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center
-                        )
-
-                        Spacer(modifier = Modifier.height(24.dp))
-
-                        Button(onClick = { viewModel.loadFavoriteRecipes() }) {
-                            Text("Retry")
-                        }
-                    }
-                }
+                        .padding(paddingValues)
+                )
             }
         }
     }

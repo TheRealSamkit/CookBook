@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.cookbook.presentation.components.ErrorView
 import com.example.cookbook.presentation.components.RecipeCard
 import com.example.cookbook.presentation.recipe.RecipeViewModel
 import com.example.cookbook.util.Constants
@@ -134,7 +135,10 @@ fun HomeScreen(
                     ErrorView(
                         message = (recipesState as Result.Error).exception.message
                             ?: "Failed to load recipes",
-                        onRetry = { viewModel.loadAllRecipes() },
+                        onRetry = {
+                            selectedCategory?.let { viewModel.loadRecipesByCategory(it) }
+                                ?: viewModel.loadAllRecipes()
+                        },
                         modifier = Modifier.fillMaxSize()
                     )
                 }
@@ -236,56 +240,3 @@ fun EmptyRecipesView(
     }
 }
 
-/**
- * Error state view with retry button.
- */
-@Composable
-fun ErrorView(
-    message: String,
-    onRetry: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier,
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-            modifier = Modifier.padding(32.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Warning,
-                contentDescription = "Error",
-                tint = MaterialTheme.colorScheme.error,
-                modifier = Modifier.size(64.dp)
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = "Oops!",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.error
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = message,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Button(onClick = onRetry) {
-                Icon(Icons.Default.Refresh, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Try Again")
-            }
-        }
-    }
-}

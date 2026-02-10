@@ -4,6 +4,7 @@ object Constants {
     // Firestore Collections
     const val USERS_COLLECTION = "users"
     const val RECIPES_COLLECTION = "recipes"
+    const val REVIEWS_SUBCOLLECTION = "reviews"
 
     // Firebase Storage Paths
     const val RECIPE_IMAGES_PATH = "recipe_images"

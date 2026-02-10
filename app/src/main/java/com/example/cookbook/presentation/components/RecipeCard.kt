@@ -15,6 +15,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.cookbook.data.model.Recipe
+import com.example.cookbook.presentation.components.RatingBar
 
 /**
  * Recipe Card component for displaying recipe preview in lists.
@@ -63,7 +64,6 @@ fun RecipeCard(
             Column(
                 modifier = Modifier.padding(16.dp)
             ) {
-                // Recipe Name
                 Text(
                     text = recipe.name,
                     style = MaterialTheme.typography.titleLarge,
@@ -71,6 +71,24 @@ fun RecipeCard(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
+
+                if (recipe.reviewCount > 0) {
+                    Row(
+                        modifier = Modifier.padding(top = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RatingBar(
+                            rating = recipe.averageRating,
+                            starSize = 16.dp
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "(${recipe.reviewCount})",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(4.dp))
 
@@ -215,6 +233,24 @@ fun CompactRecipeCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+
+                if (recipe.reviewCount > 0) {
+                    Row(
+                        modifier = Modifier.padding(top = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RatingBar(
+                            rating = recipe.averageRating,
+                            starSize = 12.dp
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "${recipe.averageRating}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(4.dp))
 

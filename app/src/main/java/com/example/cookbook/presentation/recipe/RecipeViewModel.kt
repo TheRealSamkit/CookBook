@@ -4,11 +4,14 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cookbook.data.model.Recipe
+import com.example.cookbook.data.model.Review
 import com.example.cookbook.data.repository.AuthRepository
 import com.example.cookbook.data.repository.RecipeRepository
+import com.example.cookbook.data.repository.ReviewRepository
 import com.example.cookbook.data.repository.StorageRepository
 import com.example.cookbook.data.repository.UserRepository
 import com.example.cookbook.util.Result
+import com.google.firebase.Timestamp
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,6 +26,7 @@ class RecipeViewModel : ViewModel() {
     private val storageRepository = StorageRepository()
     private val userRepository = UserRepository()
     private val authRepository = AuthRepository()
+    private val reviewRepository = ReviewRepository()
 
     // All recipes
     private val _recipesState = MutableStateFlow<Result<List<Recipe>>>(Result.Loading)
@@ -55,6 +59,14 @@ class RecipeViewModel : ViewModel() {
     // Selected category filter
     private val _selectedCategory = MutableStateFlow<String?>(null)
     val selectedCategory: StateFlow<String?> = _selectedCategory.asStateFlow()
+
+    // Reviews for current recipe
+    private val _reviewsState = MutableStateFlow<Result<List<Review>>>(Result.Loading)
+    val reviewsState: StateFlow<Result<List<Review>>> = _reviewsState.asStateFlow()
+
+    // Add review state
+    private val _saveReviewState = MutableStateFlow<Result<Unit>?>(null)
+    val saveReviewState: StateFlow<Result<Unit>?> = _saveReviewState.asStateFlow()
 
     init {
         loadAllRecipes()
@@ -105,8 +117,66 @@ class RecipeViewModel : ViewModel() {
                     // Check if recipe is favorited
                     if (result is Result.Success) {
                         checkIfFavorite(recipeId)
+                        loadReviews(recipeId)
                     }
                 }
+        }
+    }
+
+    /**
+     * Load reviews for a specific recipe.
+     */
+    fun loadReviews(recipeId: String) {
+        viewModelScope.launch {
+            reviewRepository.getReviewsForRecipe(recipeId)
+                .collect { result ->
+                    _reviewsState.value = result
+                }
+        }
+    }
+
+    /**
+     * Submit a new review for a recipe.
+     */
+    fun submitReview(recipeId: String, rating: Float, comment: String) {
+        val userId = authRepository.getCurrentUserId() ?: return
+        
+        viewModelScope.launch {
+            _saveReviewState.value = Result.Loading
+            
+            // Get user details for the review
+            userRepository.getUserById(userId).collect { userResult ->
+                if (userResult is Result.Success) {
+                    val review = Review(
+                        userId = userId,
+                        userName = userResult.data.name,
+                        rating = rating,
+                        comment = comment,
+                        timestamp = Timestamp.now() // Local timestamp for optimism
+                    )
+
+                    // Optimistic UI update
+                    val currentReviewsResult = _reviewsState.value
+                    if (currentReviewsResult is Result.Success) {
+                        val currentReviews = currentReviewsResult.data.toMutableList()
+                        currentReviews.add(0, review)
+                        _reviewsState.value = Result.Success(currentReviews)
+                    }
+                    
+                    reviewRepository.addReview(recipeId, review)
+                        .collect { result ->
+                            _saveReviewState.value = result
+                            // Reload recipe to get updated average rating
+                            if (result is Result.Success) {
+                                recipeRepository.getRecipeById(recipeId).collect {
+                                    _recipeState.value = it
+                                }
+                            }
+                        }
+                } else if (userResult is Result.Error) {
+                    _saveReviewState.value = Result.Error(userResult.exception)
+                }
+            }
         }
     }
 
@@ -349,5 +419,13 @@ class RecipeViewModel : ViewModel() {
      */
     fun clearRecipeState() {
         _recipeState.value = null
+        _reviewsState.value = Result.Loading
+    }
+
+    /**
+     * Clear save review state.
+     */
+    fun clearSaveReviewState() {
+        _saveReviewState.value = null
     }
 }

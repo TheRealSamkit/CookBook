@@ -15,6 +15,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.cookbook.data.repository.AuthRepository
+import com.example.cookbook.presentation.components.AddReviewDialog
+import com.example.cookbook.presentation.components.ErrorView
+import com.example.cookbook.presentation.components.RatingBar
+import com.example.cookbook.presentation.components.ReviewItem
 import com.example.cookbook.util.Result
 
 /**
@@ -39,6 +43,10 @@ fun RecipeDetailScreen(
     var showDeleteDialog by remember { mutableStateOf(false) }
     val deleteState by viewModel.deleteRecipeState.collectAsState()
 
+    var showAddReviewDialog by remember { mutableStateOf(false) }
+    val reviewsState by viewModel.reviewsState.collectAsState()
+    val saveReviewState by viewModel.saveReviewState.collectAsState()
+
     // Load recipe on first composition
     LaunchedEffect(recipeId) {
         viewModel.loadRecipe(recipeId)
@@ -49,6 +57,13 @@ fun RecipeDetailScreen(
         if (deleteState is Result.Success) {
             viewModel.clearDeleteRecipeState()
             onNavigateBack()
+        }
+    }
+
+    // Handle add review success (No longer needed to close dialog here)
+    LaunchedEffect(saveReviewState) {
+        if (saveReviewState is Result.Success) {
+            viewModel.clearSaveReviewState()
         }
     }
 
@@ -133,12 +148,31 @@ fun RecipeDetailScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = recipe.name,
-                                style = MaterialTheme.typography.headlineMedium,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.weight(1f)
-                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = recipe.name,
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                
+                                if (recipe.reviewCount > 0) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(top = 4.dp)
+                                    ) {
+                                        RatingBar(
+                                            rating = recipe.averageRating,
+                                            starSize = 18.dp
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = "${recipe.averageRating} (${recipe.reviewCount} reviews)",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
 
                             IconButton(onClick = { viewModel.toggleFavorite(recipeId) }) {
                                 Icon(
@@ -271,7 +305,10 @@ fun RecipeDetailScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
+                        // Instructions Section
+                        // ... existing steps implementation ...
                         recipe.steps.forEachIndexed { index, step ->
+                            // ... existing step card ...
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -299,6 +336,62 @@ fun RecipeDetailScreen(
                             }
                         }
 
+                        Spacer(modifier = Modifier.height(32.dp))
+
+                        // Reviews Section
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Reviews",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                            
+                            TextButton(onClick = { showAddReviewDialog = true }) {
+                                Icon(Icons.Default.Add, contentDescription = null)
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Add Review")
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        when (reviewsState) {
+                            is Result.Loading, Result.Idle -> {
+                                Box(
+                                    modifier = Modifier.fillMaxWidth().height(100.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                }
+                            }
+                            is Result.Success -> {
+                                val reviews = (reviewsState as Result.Success).data
+                                if (reviews.isEmpty()) {
+                                    Text(
+                                        text = "No reviews yet. Be the first to rate this recipe!",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(vertical = 16.dp)
+                                    )
+                                } else {
+                                    reviews.forEach { review ->
+                                        ReviewItem(review = review)
+                                    }
+                                }
+                            }
+                            is Result.Error -> {
+                                Text(
+                                    text = "Failed to load reviews",
+                                    color = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.padding(vertical = 16.dp)
+                                )
+                            }
+                        }
+
                         // Bottom spacing
                         Spacer(modifier = Modifier.height(32.dp))
                     }
@@ -306,26 +399,14 @@ fun RecipeDetailScreen(
             }
 
             is Result.Error -> {
-                Box(
+                ErrorView(
+                    message = (recipeState as Result.Error).exception.message
+                        ?: "Failed to load recipe",
+                    onRetry = { viewModel.loadRecipe(recipeId) },
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(paddingValues),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = "Failed to load recipe",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Button(onClick = { viewModel.loadRecipe(recipeId) }) {
-                            Text("Retry")
-                        }
-                    }
-                }
+                        .padding(paddingValues)
+                )
             }
         }
     }
@@ -351,6 +432,34 @@ fun RecipeDetailScreen(
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = false }) {
                     Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Add Review Dialog
+    if (showAddReviewDialog) {
+        AddReviewDialog(
+            onDismiss = { 
+                showAddReviewDialog = false
+                viewModel.clearSaveReviewState()
+            },
+            onSubmit = { rating, comment ->
+                showAddReviewDialog = false
+                viewModel.submitReview(recipeId, rating, comment)
+            }
+        )
+    }
+
+    // Show error if review submission fails
+    if (saveReviewState is Result.Error) {
+        AlertDialog(
+            onDismissRequest = { viewModel.clearSaveReviewState() },
+            title = { Text("Error") },
+            text = { Text((saveReviewState as Result.Error).exception.message ?: "Failed to submit review") },
+            confirmButton = {
+                TextButton(onClick = { viewModel.clearSaveReviewState() }) {
+                    Text("OK")
                 }
             }
         )
